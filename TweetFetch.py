@@ -72,5 +72,4 @@ class TwitterParser():
 						print("Not up to date. Most recent: {}, last recorded: {}".format(oldest, id))
 					oldest = alltweets[-1].id - 1
 
-
 		return alltweets
