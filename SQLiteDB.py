@@ -3,23 +3,12 @@ from datetime import datetime
 import pandas as pd
 import sqlite3
 
-TABLE_DICT = {
-    'id': 0,
-    'year': 1,
-    'month': 2,
-    'day': 3,
-    'weekday': 4,
-    'hour': 5,
-    'wait_time': 6
-}
 
 class SQLiteDB():
 
     def __init__(self, db_name = 'waits.db'):
         self.conn = sqlite3.connect(db_name)
         self.curs = self.conn.cursor()
-
-        self.TABLE_DICT = TABLE_DICT
 
         self.curs.execute('''CREATE TABLE IF NOT EXISTS wait_times (
                             id integer,
