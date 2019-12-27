@@ -1,7 +1,8 @@
-import pytz
 import re
-
 from datetime import datetime, timedelta, timezone
+
+import pytz
+
 
 #regex for time extraction
 time_extractor = re.compile(r'(\d\.?\d*)\s?(mins|min|hrs|hours|hr|hour)', flags=re.I)

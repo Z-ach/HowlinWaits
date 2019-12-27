@@ -1,6 +1,3 @@
-import csv
-import os
-
 import tweepy #https://github.com/tweepy/tweepy
 
 import Secret
@@ -17,6 +14,7 @@ class TwitterParser():
 		for tweet in tweets:
 			self.db_wrapper.insert(tweet.id, tweet.created_at, tweet.wait_time)
 
+	#TODO rewrite this section, my eyes are in pain
 	def get_latest_tweets(self):
 		#Twitter only allows access to a users most recent 3240 tweets with this method
 
@@ -40,6 +38,7 @@ class TwitterParser():
 
 		if not id:
 			#keep grabbing tweets until there are no tweets left to grab
+			#this only occurs if sql db is empty
 			while True:
 				print("getting tweets before {}".format(oldest))
 
@@ -58,6 +57,7 @@ class TwitterParser():
 				if not new_tweets: break
 				oldest = new_tweets[-1].id - 1
 		else:
+			#keep fetching tweets until overlap detected from previously saved tweets
 			up_to_date = True if id == oldest else False
 			while not up_to_date:
 				new_tweets = api.user_timeline(screen_name = 'howlinrays', count=200, max_id=oldest)
