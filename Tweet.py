@@ -5,7 +5,7 @@ import pytz
 
 
 #regex for time extraction
-time_extractor = re.compile(r'(\d\.?\d*)\s?(mins|min|hrs|hours|hr|hour)', flags=re.I)
+time_extractor = re.compile(r'(\d\.?\d*)\+?\s?(mins|min|hrs|hours|hr|hour)', flags=re.I)
 
 #timezone
 pst_tz = pytz.timezone('US/Pacific')
