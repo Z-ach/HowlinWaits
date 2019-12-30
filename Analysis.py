@@ -7,30 +7,22 @@ import matplotlib
 class Analysis():
 
     def __init__(self, db):
-        matplotlib.use('Agg')
         self.df = db.get_all()
-        rn = datetime.now()
-        rn = rn + timedelta(days=-(31*3))
-        limited = self.df.query('_date > {}'.format(rn.timestamp()))
+        self.rn = datetime.now()
+        #self.avg_weekday_hours(12)
+        print(self.get_current_avgs())
 
-        df_week = limited.groupby('weekday')
-        df_list = [df_week.get_group(day) for day in range(1, 7)]
+    def avg_weekday_hours(self, month):
+        data = self.df.query('month=={} & year=={}'.format(month, self.rn.year))
+        data = data.groupby(['weekday', 'hour'], as_index=False).mean().sort_values(by=['weekday', 'hour'])
+        print(data[['weekday', 'hour', 'wait_time']])
 
-        for df in df_list:
-            print(df)
-            print(df['wait_time'].mean())
-
-
-        times = limited.groupby(['weekday', 'hour'], as_index=False)
-        mean_times = times['wait_time'].mean()
-        print(mean_times.sort_values(by=['wait_time']).head())
-
-        limited = self.df.query('month == 6')
-        day_df = limited.groupby('day').mean()
-        print(day_df)
-        avgs = day_df.plot.bar(y='wait_time', rot=0)
-        fig = avgs.get_figure()
-        fig.savefig("dayplot.png")
+    def get_current_avgs(self, using=31, as_dict=True):
+        last_days = self.rn + timedelta(days=-using)
+        data = self.df.query('_date > {}'.format(last_days.timestamp()))
+        data = data.groupby(['weekday', 'hour']).mean().sort_values(by=['weekday', 'hour'])
+        if as_dict: return data.groupby(level=0).apply(lambda data: data.xs(data.name)['wait_time'].to_dict()).to_dict()
+        return data[['wait_time']]
 
     class EWMAnalysis():
         pass
