@@ -9,11 +9,15 @@ class Analysis():
     def __init__(self, db):
         self.df = db.get_all()
         self.rn = datetime.now()
-        #self.avg_weekday_hours(12)
-        print(self.get_current_avgs())
+        print('*' * 50)
+        self.avg_weekday_hours(2)
+        print('*' * 50)
+        print(self.get_current_avgs(7, False))
+        print('*' * 50)
 
-    def avg_weekday_hours(self, month):
-        data = self.df.query('month=={} & year=={}'.format(month, self.rn.year))
+    def avg_weekday_hours(self, month, year=None):
+        if not year: year = self.rn.year
+        data = self.df.query('month=={} & year=={}'.format(month, year))
         data = data.groupby(['weekday', 'hour'], as_index=False).mean().sort_values(by=['weekday', 'hour'])
         print(data[['weekday', 'hour', 'wait_time']])
 
