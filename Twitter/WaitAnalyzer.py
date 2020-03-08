@@ -3,6 +3,9 @@ from TweetFetch import TwitterParser
 from Analysis import Analysis
 from pathlib import Path
 
+import NeuralNet
+
+
 class WaitAnalyzer():
 
     def __init__(self):
@@ -11,6 +14,9 @@ class WaitAnalyzer():
         self.db = SQLiteDB(db_path)
         self.parser = TwitterParser(self.db)
         #Analysis(self.db)
+        NeuralNet.test(self.db)
+
+
 
 if __name__ == '__main__':
-	WaitAnalyzer()
+    WaitAnalyzer()
