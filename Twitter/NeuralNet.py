@@ -1,6 +1,7 @@
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 import numpy as np
 import pandas as pd
 
@@ -25,6 +26,8 @@ class NeuralNet():
         self.distrib = (.8, .1, .1)
         self.rounding = 0.25
         self.avg, self.worst = 0, 0
+        self.patience = 25
+        self.shape_str = ''
 
     def set_train_test_val(self, train, test, val):
         self.distrib = (train, test, val)
@@ -33,54 +36,61 @@ class NeuralNet():
         inputs = keras.Input(shape=net_shape[0])
         dense = layers.Dense(net_shape[1], activation='relu')
         x = dense(inputs)
-        for lyr in net_shape[2:-1]:
+        for lyr in net_shape[2:]:
             x = layers.Dense(lyr, activation='relu')(x)
-        output = layers.Dense(net_shape[-1])(x)
+        output = layers.Dense(1)(x)
         return keras.Model(inputs=inputs, outputs=output)
 
     def set_rounding(self, rounding):
         self.rounding = int(1/rounding)
 
-    def train_model(self, data, labels, epochs):
+    def train_model(self, data, labels, epochs, weights_path):
         partition_count = [int(pct * len(data)) for pct in self.distrib]
         idxs = [0, partition_count[0], partition_count[0] + partition_count[1], -1]
 
-        rounded = np.asarray([round(element[0] * self.rounding) for element in labels.tolist()])
+        rounded = labels #np.asarray([round(element[0] * self.rounding) for element in labels.tolist()])
 
         data_x = [data[idxs[x]:idxs[x + 1]] for x in range(3)]
         data_y = [rounded[idxs[x]:idxs[x + 1]] for x in range(3)]
 
+        weights_file = str(weights_path.joinpath('mdl.hd5'))
+        print(weights_file, self.shape_str)
+        early_stop = EarlyStopping(monitor='val_loss', patience = self.patience, verbose=0, mode='min', restore_best_weights=True)
+        checkpoint = ModelCheckpoint(weights_file, save_best_only=True, monitor='val_loss', mode='min')
+
         self.model.compile(optimizer=keras.optimizers.RMSprop(),
                            # Loss function to minimize
-                           loss=keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+                           loss='mse',
                            # List of metrics to monitor
-                           metrics=['sparse_categorical_accuracy'])
+                           metrics=['mae', 'mse'])
 
         history = self.model.fit(data_x[0], data_y[0],
                                  batch_size=64,
                                  epochs=epochs,
+                                 callbacks=[early_stop, checkpoint],
                                  # We pass some validation for
                                  # monitoring validation loss and metrics
                                  # at the end of each epoch
-                                 validation_data=(data_x[2], data_y[2]))
+                                 validation_data=(data_x[1], data_y[1]))
 
-        print('\nhistory dict:', history.history)
-
-        self.avg, self.worst = self.get_stats(data_x[1], data_y[1])
+        self.avg, self.worst = self.get_stats(data_x[2], data_y[2])
 
     def get_stats(self, data, actuals):
         predictions = self.model.predict(data)
         deltas = list()
-        max_delta = 0
         for prediction, actual in zip(predictions, actuals):
-            guess = np.argmax(prediction) * 0.25
-            actual *= 0.25
-            delta = abs(guess - actual)
-            max_delta = max(delta, max_delta)
+            delta = abs(prediction - actual)
             deltas.append(delta)
         deltas = np.asarray(deltas)
         return np.average(deltas), np.max(deltas)
 
+    def generous_loss(self, actual, predicted):
+        print(type(actual), type(predicted))
+        exit()
+        loss_val = 0
+        if abs(actual - predicted) > 15:
+            pass
+        return loss_val
 
 def test(df):
     out_size = 20
