@@ -6,6 +6,8 @@ from matplotlib import pyplot as plt
 from datetime import datetime
 import pytz
 
+PRECIP_PROB_MIN = 0.4
+
 
 class NeuralShaping():
 
@@ -22,6 +24,8 @@ class NeuralShaping():
         '''
         if 'day_of_year' in input_names:
             self.add_day_of_year(data)
+        if 'precip_prob_thresh' in input_names:
+            self.add_precip_prob_thresh(data)
         self.input_names = input_names
         self.run_models(data, node_sizes, mid_lyr_counts)
 
@@ -34,6 +38,15 @@ class NeuralShaping():
             pst_dt = pst_tz.normalize(utc_dt.astimezone(pst_tz))
             days.append(pst_dt.timetuple().tm_yday)
         data['day_of_year'] = days
+
+    def add_precip_prob_thresh(self, data):
+        precip_prob_threshes = []
+        for i, precip_prob in enumerate(data['precip_probability']):
+            precip_prop_thresh = precip_prob
+            if precip_prob < PRECIP_PROB_MIN:
+                precip_prop_thresh = 0
+            precip_prob_threshes.append(precip_prop_thresh)
+        data['precip_prob_thresh'] = precip_prob_threshes
         
     def run_models(self, data, node_sizes, mid_lyr_counts):
         start_shape = ()

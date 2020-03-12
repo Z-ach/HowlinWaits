@@ -44,11 +44,8 @@ class WeatherParser():
         json_data = self.get_weather_for_date(dt)
         for hour_data in json_data["hourly"]["data"]:
             dt = datetime.fromtimestamp(hour_data["time"], pst_tz)
-            feels_like_temp = hour_data["apparentTemperature"]
-            precip_rating = 0
-            if "precipRating" in hour_data and "precipProbability" in hour_data:
-                precip_rating = ((1 + hour_data["precipIntensity"] * 10)**2) * ((1 + hour_data["precipProbability"])**2)
-            self.db_wrapper.insert_weather(dt, feels_like_temp, precip_rating, hour_data["summary"])
+            #precip_rating = ((1 + hour_data["precipIntensity"] * 10)**2) * ((1 + hour_data["precipProbability"])**2)
+            self.db_wrapper.insert_weather(dt, hour_data["apparentTemperature"], hour_data["precipIntensity"], hour_data["precipProbability"], hour_data["summary"])
 
     # request weather for each hour of the date (max of 24 hours)
     def get_weather_for_date(self, dt):
