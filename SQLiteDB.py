@@ -25,7 +25,7 @@ class SQLiteDB():
                             )''')
 
     #attempt to insert new data, catch exception if data is not unique
-    def insert(self, id, dt, wait_time):
+    def insert_wait_time(self, id, dt, wait_time):
         vals = (id, dt.timestamp(), dt.year, dt.month, dt.day, dt.weekday(), dt.hour, wait_time)
         try:
             self.curs.execute("INSERT INTO wait_times VALUES (?,?,?,?,?,?,?,?)", vals)
@@ -34,12 +34,12 @@ class SQLiteDB():
             print("Failed to insert {}, must be duplicate".format(vals))
 
     #get last saved id for TweetFetch
-    def get_last_id(self):
+    def get_last_wait_id(self):
         self.curs.execute("SELECT MAX(id) as max_id FROM wait_times")
         return self.curs.fetchone()[0]
 
     #sql -> pandas fetch, used for analysis
-    def get_all(self):
+    def get_wait_times(self):
         return pd.read_sql("SELECT * FROM wait_times", self.conn)
 
 

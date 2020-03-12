@@ -7,7 +7,7 @@ import matplotlib
 class Analysis():
 
     def __init__(self, db):
-        self.df = db.get_all()
+        self.df = db.get_wait_times()
         self.rn = datetime.now()
         print('*' * 50)
         self.avg_weekday_hours(2)

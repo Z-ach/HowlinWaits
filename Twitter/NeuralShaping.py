@@ -1,5 +1,5 @@
 from SQLiteDB import SQLiteDB
-from NeuralNet import NeuralNet
+from Twitter.NeuralNet import NeuralNet
 
 from pathlib import Path
 from matplotlib import pyplot as plt
