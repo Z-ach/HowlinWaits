@@ -3,6 +3,9 @@ from datetime import datetime
 import pandas as pd
 import sqlite3
 
+import pytz
+
+pst_tz = pytz.timezone('US/Pacific')
 
 class SQLiteDB():
 
@@ -24,6 +27,17 @@ class SQLiteDB():
                             PRIMARY KEY (_date)
                             )''')
 
+        self.curs.execute('''CREATE TABLE IF NOT EXISTS weather (
+                            _date date NOT NULL,
+                            year integer NOT NULL,
+                            month integer NOT NULL,
+                            day integer NOT NULL,
+                            hour integer NOT NULL,
+                            feels_like_temp integer NOT NULL,
+                            precip_level float NOT NULL,
+                            weather_summary string,
+                            PRIMARY KEY (year, month, day, hour))''')
+
     #attempt to insert new data, catch exception if data is not unique
     def insert_wait_time(self, id, dt, wait_time):
         vals = (id, dt.timestamp(), dt.year, dt.month, dt.day, dt.weekday(), dt.hour, wait_time)
@@ -42,6 +56,24 @@ class SQLiteDB():
     def get_wait_times(self):
         return pd.read_sql("SELECT * FROM wait_times", self.conn)
 
+    #insert new weather data, if already exists replace (this is handy when replacing out-of-date forecasts)
+    def insert_weather(self, dt, feels_like_f, precip, summary = None):
+        vals = (dt.timestamp(), dt.year, dt.month, dt.hour, dt.day, feels_like_f, precip, summary)
+        update_vals = (feels_like_f, precip, summary, dt.timestamp())
+        self.curs.execute('''INSERT OR IGNORE INTO weather VALUES (?, ?, ?, ?, ?, ?, ?, ?)''', vals)
+        self.curs.execute('''UPDATE weather SET feels_like_temp=?, precip_level=?, weather_summary=? WHERE _date=?''', update_vals)
+        self.conn.commit()
+ 
+    #get the last weather entry, if no entries, start at the first wait-time dt
+    def get_last_weather_dt(self):
+        self.curs.execute("SELECT MAX(_date) FROM weather")
+        timestamp = self.curs.fetchone()[0]
+        if timestamp is None:
+            self.curs.execute("SELECT MIN(_date) FROM wait_times")
+            timestamp = self.curs.fetchone()[0]
+        if timestamp is not None:
+            return datetime.fromtimestamp(timestamp, pst_tz)
+        return None
 
 if __name__ == '__main__':
     db_instance = SQLiteDB()
