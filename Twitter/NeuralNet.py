@@ -21,56 +21,80 @@ Inputs:
 
 class NeuralNet():
 
-    def __init__(self, shape):
-        self.model = self.create_layers(shape)
+    def __init__(self, shape, input_labels):
+        self.model = self.create_model(shape)
+        self.input_labels = input_labels
         self.distrib = (.8, .1, .1)
-        self.rounding = 0.25
         self.avg, self.worst = 0, 0
-        self.patience = 25
-        self.shape_str = ''
+        self.patience = 50
+
+    def __repr__(self):
+        #return nodes per layer delimited by '-'
+        #input layer different, returns list of tuple (not tuple)
+        input_layer = str(self.model.layers[0].output_shape[0][1]) + '-'
+        rest = '-'.join([str(l.output_shape[1]) for l in self.model.layers[1:]])
+        return input_layer + rest
 
     def set_train_test_val(self, train, test, val):
         self.distrib = (train, test, val)
 
-    def create_layers(self, net_shape):
+    def create_model(self, net_shape):
         inputs = keras.Input(shape=net_shape[0])
         dense = layers.Dense(net_shape[1], activation='relu')
         x = dense(inputs)
         for lyr in net_shape[2:]:
             x = layers.Dense(lyr, activation='relu')(x)
         output = layers.Dense(1)(x)
-        return keras.Model(inputs=inputs, outputs=output)
 
-    def set_rounding(self, rounding):
-        self.rounding = int(1/rounding)
+        model = keras.Model(inputs=inputs, outputs=output)
 
-    def train_model(self, data, labels, epochs, weights_path):
-        partition_count = [int(pct * len(data)) for pct in self.distrib]
+        model.compile(optimizer=keras.optimizers.RMSprop(),
+                      # Loss function to minimize
+                      loss='mse',
+                      # List of metrics to monitor
+                      metrics=['mae', 'mse'])
+        return model
+
+    def preprocess_data(self, data):
+	#remove data if count of hour < 25
+        counts = data['hour'].value_counts()
+        data = data[~data['hour'].isin(counts[counts < 25].index)]
+
+        #shuffle data
+        data = data.sample(frac=1).reset_index(drop=True)
+
+        #split into input and output
+        outputs = data[['wait_time']].to_numpy()
+        inputs = data[self.input_labels].to_numpy()
+
+        #partition data into train, test, val for inputs and outputs
+        partition_count = [int(pct * len(inputs)) for pct in self.distrib]
         idxs = [0, partition_count[0], partition_count[0] + partition_count[1], -1]
+        data_x = [inputs[idxs[x]:idxs[x + 1]] for x in range(3)]
+        data_y = [outputs[idxs[x]:idxs[x + 1]] for x in range(3)]
 
-        rounded = labels #np.asarray([round(element[0] * self.rounding) for element in labels.tolist()])
+        return data_x, data_y
 
-        data_x = [data[idxs[x]:idxs[x + 1]] for x in range(3)]
-        data_y = [rounded[idxs[x]:idxs[x + 1]] for x in range(3)]
 
+    def train_model(self, data, epochs, weights_path):
+        data_x, data_y = self.preprocess_data(data)
         weights_file = str(weights_path.joinpath('mdl.hd5'))
-        print(weights_file, self.shape_str)
-        early_stop = EarlyStopping(monitor='val_loss', patience = self.patience, verbose=0, mode='min', restore_best_weights=True)
-        checkpoint = ModelCheckpoint(weights_file, save_best_only=True, monitor='val_loss', mode='min')
 
-        self.model.compile(optimizer=keras.optimizers.RMSprop(),
-                           # Loss function to minimize
-                           loss='mse',
-                           # List of metrics to monitor
-                           metrics=['mae', 'mse'])
+        early_stop = EarlyStopping(monitor='val_loss', 
+                                   patience = self.patience, 
+                                   verbose=0, 
+                                   mode='min', 
+                                   restore_best_weights=True)
+
+        checkpoint = ModelCheckpoint(weights_file, 
+                                     save_best_only=True, 
+                                     monitor='val_loss', 
+                                     mode='min')
 
         history = self.model.fit(data_x[0], data_y[0],
                                  batch_size=64,
                                  epochs=epochs,
                                  callbacks=[early_stop, checkpoint],
-                                 # We pass some validation for
-                                 # monitoring validation loss and metrics
-                                 # at the end of each epoch
                                  validation_data=(data_x[1], data_y[1]))
 
         self.avg, self.worst = self.get_stats(data_x[2], data_y[2])
@@ -84,81 +108,3 @@ class NeuralNet():
         deltas = np.asarray(deltas)
         return np.average(deltas), np.max(deltas)
 
-    def generous_loss(self, actual, predicted):
-        print(type(actual), type(predicted))
-        exit()
-        loss_val = 0
-        if abs(actual - predicted) > 15:
-            pass
-        return loss_val
-
-def test(df):
-    out_size = 20
-    inputs = keras.Input(shape=(4,))
-    dense = layers.Dense(64, activation='relu')
-    x = dense(inputs)
-
-    x = layers.Dense(64, activation='relu')(x)
-    outputs = layers.Dense(out_size)(x)
-
-    model = keras.Model(inputs=inputs, outputs=outputs, name='sample_network')
-
-    print(model.summary())
-
-    labels = ['hour', 'weekday', 'day', 'month', 'wait_time']
-    data_x = df[labels[:len(labels) - 1]].to_numpy()
-    data_y = df[labels[len(labels) - 1]].to_numpy()
-    data_len = len(data_x)
-    half_data = int(data_len / 2)
-
-    val_size = int(data_len * 0.1)
-    #np.random.seed(99)
-    #np.random.shuffle(data_x)
-    #np.random.seed(99)
-    #np.random.shuffle(data_y)
-
-    tmp_onehot = [(val * 4) / 4 for val in data_y]
-    onehot_y = np.asarray(tmp_onehot)
-    # round data to nearest 1/4, then onehot
-    '''for index, entry in enumerate(data_y):
-        val = round((entry * 4) / 4)
-        onehot_y[index] = onehot(val, classes, 0.25)
-    '''
-
-    print(data_len, half_data, val_size)
-
-    train_x, train_y = data_x[:-val_size, :len(labels) - 1], onehot_y[:-val_size]
-    val_x, val_y = data_x[-val_size:, :len(labels) - 1], onehot_y[-val_size:]
-
-    print(train_x.shape, train_y.shape)
-    print(val_x.shape, val_y.shape)
-
-    model.compile(optimizer=keras.optimizers.RMSprop(),  # Optimizer
-                  # Loss function to minimize
-                  loss=keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-                  # List of metrics to monitor
-                  metrics=['sparse_categorical_accuracy'])
-
-    print('# Fit model on training data')
-    history = model.fit(train_x, train_y,
-                        batch_size=64,
-                        epochs=100,
-                        # We pass some validation for
-                        # monitoring validation loss and metrics
-                        # at the end of each epoch
-                        validation_data=(val_x, val_y))
-
-    print('\nhistory dict:', history.history)
-
-    #results = model.evaluate(test_x, test_y, batch_size=128)
-    #print('test loss, test acc:', results)
-
-    get_stats(model, data_x, data_y)
-    '''
-    predictions = model.predict(test_x[:3])
-    for prediction, actual in zip(predictions, test_y[:3]):
-        cat = np.argmax(prediction) * 0.25
-        actual *= 0.25
-        print('prediction: {}, actual: {}'.format(cat, actual))
-    print('predictions shape:', predictions.shape)
-    '''
