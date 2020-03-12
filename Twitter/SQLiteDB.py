@@ -7,7 +7,6 @@ import sqlite3
 class SQLiteDB():
 
     def __init__(self, db_name = 'waits.db'):
-        print(db_name)
         self.conn = sqlite3.connect(str(db_name))
         self.curs = self.conn.cursor()
 

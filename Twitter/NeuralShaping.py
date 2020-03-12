@@ -3,6 +3,8 @@ from NeuralNet import NeuralNet
 
 from pathlib import Path
 from matplotlib import pyplot as plt
+from datetime import datetime
+import pytz
 
 
 class NeuralShaping():
@@ -18,14 +20,26 @@ class NeuralShaping():
         mid_lyr_counts  how many hidden layers there are
                         all will be of size `node_sizes`
         '''
+        if 'day_of_year' in input_names:
+            self.add_day_of_year(data)
         self.input_names = input_names
         self.run_models(data, node_sizes, mid_lyr_counts)
 
+    def add_day_of_year(self, data):
+        pst_tz = pytz.timezone('US/Pacific')
+        days = []
+        for timestamp in data['_date']:
+            dt = datetime.fromtimestamp(timestamp)
+            utc_dt = pytz.utc.localize(dt)
+            pst_dt = pst_tz.normalize(utc_dt.astimezone(pst_tz))
+            days.append(pst_dt.timetuple().tm_yday)
+        data['day_of_year'] = days
+        
     def run_models(self, data, node_sizes, mid_lyr_counts):
         start_shape = ()
         epoch_lim = 250
-        for node_size in [pow(2, x) for x in range(9, 14)]:
-            for middle_layers in range(2, 5):
+        for node_size in node_sizes:
+            for middle_layers in mid_lyr_counts:
                 #model setup
                 start_shape = (len(self.input_names),) + (node_size,)*middle_layers
                 net = NeuralNet(shape=start_shape, input_labels=self.input_names)
