@@ -34,7 +34,7 @@ class SQLiteDB():
                             day integer NOT NULL,
                             hour integer NOT NULL,
                             feels_like_temp integer NOT NULL,
-                            precip_level float NOT NULL,
+                            precip_rating float NOT NULL,
                             weather_summary string,
                             PRIMARY KEY (year, month, day, hour))''')
 
@@ -57,11 +57,11 @@ class SQLiteDB():
         return pd.read_sql("SELECT * FROM wait_times", self.conn)
 
     #insert new weather data, if already exists replace (this is handy when replacing out-of-date forecasts)
-    def insert_weather(self, dt, feels_like_f, precip, summary = None):
-        vals = (dt.timestamp(), dt.year, dt.month, dt.hour, dt.day, feels_like_f, precip, summary)
-        update_vals = (feels_like_f, precip, summary, dt.timestamp())
+    def insert_weather(self, dt, feels_like_temp, precip, summary = None):
+        vals = (dt.timestamp(), dt.year, dt.month, dt.hour, dt.day, feels_like_temp, precip, summary)
+        update_vals = (feels_like_temp, precip, summary, dt.timestamp())
         self.curs.execute('''INSERT OR IGNORE INTO weather VALUES (?, ?, ?, ?, ?, ?, ?, ?)''', vals)
-        self.curs.execute('''UPDATE weather SET feels_like_temp=?, precip_level=?, weather_summary=? WHERE _date=?''', update_vals)
+        self.curs.execute('''UPDATE weather SET feels_like_temp=?, precip_rating=?, weather_summary=? WHERE _date=?''', update_vals)
         self.conn.commit()
  
     #get the last weather entry, if no entries, start at the first wait-time dt
@@ -74,6 +74,11 @@ class SQLiteDB():
         if timestamp is not None:
             return datetime.fromtimestamp(timestamp, pst_tz)
         return None
+
+    def get_all(self):
+        return pd.read_sql('''SELECT wt.*, w.feels_like_temp, w.precip_rating 
+            FROM wait_times wt 
+            INNER JOIN weather w ON wt.year=w.year AND wt.month=w.month AND wt.day=w.day AND wt.hour=w.hour;''', self.conn)
 
 if __name__ == '__main__':
     db_instance = SQLiteDB()

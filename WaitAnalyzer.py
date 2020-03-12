@@ -19,7 +19,7 @@ class WaitAnalyzer():
         self.weather_parser = WeatherParser(self.db)
         self.weather_parser.update_weather()
         internal_nodes = [pow(2, x) for x in range(9, 15)]
-        NeuralShaping(self.db.get_wait_times(), ['hour', 'weekday', 'day', 'day_of_year'], internal_nodes, range(1, 6))
+        NeuralShaping(self.db.get_all(), ['hour', 'weekday', 'month', 'feels_like_temp', 'precip_rating'], internal_nodes, range(1, 6))
         #Analysis(self.db)
         #NeuralNet.test(self.db)
 

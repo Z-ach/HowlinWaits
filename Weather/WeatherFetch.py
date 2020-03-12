@@ -15,13 +15,11 @@ FORECAST_DAYS = 7
 class WeatherParser():
 
     def __init__(self, db_instance):
-        config = configparser.ConfigParser()
-        config.read(os.path.join(os.path.dirname(__file__), 'config.ini'))
-        self.db = db_instance
+        self.db_wrapper = db_instance
 
     def update_weather(self):
         # datetime of last weather entry could be greater than now due to forecasts
-        last_dt = self.db.get_last_weather_dt()  
+        last_dt = self.db_wrapper.get_last_weather_dt()  
         now_dt = datetime.now(tz=pst_tz)
         # the forecast should refresh, so, at most, start at now
         start_dt = now_dt
@@ -46,11 +44,11 @@ class WeatherParser():
         json_data = self.get_weather_for_date(dt)
         for hour_data in json_data["hourly"]["data"]:
             dt = datetime.fromtimestamp(hour_data["time"], pst_tz)
-            feels_like_f = hour_data["apparentTemperature"]
-            precip_intensity = 0
-            if "precipIntensity" in hour_data:
-                precip_intensity = hour_data["precipIntensity"]
-            self.db.insert_weather(dt, feels_like_f, precip_intensity)
+            feels_like_temp = hour_data["apparentTemperature"]
+            precip_rating = 0
+            if "precipRating" in hour_data and "precipProbability" in hour_data:
+                precip_rating = ((1 + hour_data["precipIntensity"] * 10)**2) * ((1 + hour_data["precipProbability"])**2)
+            self.db_wrapper.insert_weather(dt, feels_like_temp, precip_rating, hour_data["summary"])
 
     # request weather for each hour of the date (max of 24 hours)
     def get_weather_for_date(self, dt):
