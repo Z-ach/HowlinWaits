@@ -1,9 +1,10 @@
 from SQLiteDB import SQLiteDB
-from Twitter.NeuralNet import NeuralNet
+from Neural.NeuralNet import NeuralNet
 
 from pathlib import Path
 from matplotlib import pyplot as plt
-from datetime import datetime
+from datetime import datetime, timedelta
+import pandas.tseries.holiday
 import pytz
 
 PRECIP_PROB_MIN = 0.4
@@ -26,6 +27,8 @@ class NeuralShaping():
             self.add_day_of_year(data)
         if 'precip_prob_thresh' in input_names:
             self.add_precip_prob_thresh(data)
+        if 'holiday' in input_names:
+            self.add_holidays(data)
         self.input_names = input_names
         self.run_models(data, node_sizes, mid_lyr_counts)
 
@@ -47,7 +50,19 @@ class NeuralShaping():
                 precip_prop_thresh = 0
             precip_prob_threshes.append(precip_prop_thresh)
         data['precip_prob_thresh'] = precip_prob_threshes
-        
+
+    def add_holidays(self, data):
+        holiday_append = []
+        day_range = 3
+        cal = pandas.tseries.holiday.USFederalHolidayCalendar()
+        end_date = (datetime.now() + timedelta(days=31)).strftime('%Y-%m-%d')
+        holidays = cal.holidays(start='2018-01-01', end=end_date).to_series()
+        for timestamp in data['_date']:
+            dt = datetime.fromtimestamp(timestamp)
+            dt_range = [(dt + timedelta(days=x)).strftime('%Y-%m-%d') for x in [-day_range, day_range + 1]]
+            holiday_append.append(1 if len(holidays.loc[dt_range[0]:dt_range[1]]) > 0 else 0)
+        data['holiday'] = holiday_append
+
     def run_models(self, data, node_sizes, mid_lyr_counts):
         start_shape = ()
         epoch_lim = 250
