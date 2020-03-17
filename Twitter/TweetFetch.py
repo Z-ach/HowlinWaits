@@ -1,7 +1,7 @@
 import tweepy #https://github.com/tweepy/tweepy
 
-import Secret
-from Tweet import Tweet
+from Config import Secret
+from Twitter.Tweet import Tweet
 
 class TwitterParser():
 
@@ -12,7 +12,7 @@ class TwitterParser():
 
 	def save_tweets(self, tweets):
 		for tweet in tweets:
-			self.db_wrapper.insert(tweet.id, tweet.created_at, tweet.wait_time)
+			self.db_wrapper.insert_wait_time(tweet.id, tweet.created_at, tweet.wait_time)
 
 	#TODO rewrite this section, my eyes are in pain
 	def get_latest_tweets(self):
@@ -31,7 +31,7 @@ class TwitterParser():
 
 		#save most recent tweets
 		#alltweets.extend(new_tweets)
-		id = self.db_wrapper.get_last_id()
+		id = self.db_wrapper.get_last_wait_id()
 
 		#save the id of the newest tweet
 		oldest = new_tweets[0].id
