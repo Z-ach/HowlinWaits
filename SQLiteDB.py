@@ -59,7 +59,7 @@ class SQLiteDB():
 
     #insert new weather data, if already exists replace (this is handy when replacing out-of-date forecasts)
     def insert_weather(self, dt, feels_like_temp, precip_intensity, precip_probability, summary = None):
-        vals = (dt.timestamp(), dt.year, dt.month, dt.hour, dt.day, feels_like_temp, precip_intensity, precip_probability, summary)
+        vals = (dt.timestamp(), dt.year, dt.month, dt.day, dt.hour, feels_like_temp, precip_intensity, precip_probability, summary)
         update_vals = (feels_like_temp, precip_intensity, precip_probability, summary, dt.timestamp())
         self.curs.execute('''INSERT OR IGNORE INTO weather VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''', vals)
         self.curs.execute('''UPDATE weather SET feels_like_temp=?, precip_intensity=?, precip_probability=?, weather_summary=? WHERE _date=?''', update_vals)
