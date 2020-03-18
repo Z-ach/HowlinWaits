@@ -10,27 +10,36 @@ import pytz
 PRECIP_PROB_MIN = 0.4
 
 
-class NeuralShaping():
+class NeuralManager():
 
-    def __init__(self, data, input_names, node_sizes, mid_lyr_counts):
+    def __init__(self,  input_names):
         '''Specify model params to try
 
-        data            pandas dataframe with data to use for model
         input_names     list of dataframe headers to use as inputs
                         when training
+        '''
+        self.input_names = input_names
+
+    def train_models(self, data, node_sizes, mid_lyr_counts):
+        '''Train models with given shapes
+
+        data            pandas dataframe with data to use for model
         node_sizes      list of sizes to try for internal nodes
                         currently can only use same size for all layers
         mid_lyr_counts  how many hidden layers there are
                         all will be of size `node_sizes`
         '''
-        if 'day_of_year' in input_names:
-            self.add_day_of_year(data)
-        if 'precip_prob_thresh' in input_names:
-            self.add_precip_prob_thresh(data)
-        if 'holiday' in input_names:
-            self.add_holidays(data)
-        self.input_names = input_names
+        self.create_inferred_data(data)
         self.run_models(data, node_sizes, mid_lyr_counts)
+
+    def create_inferred_data(self, data):
+        if 'day_of_year' in self.input_names:
+            self.add_day_of_year(data)
+        if 'precip_prob_thresh' in self.input_names:
+            self.add_precip_prob_thresh(data)
+        if 'holiday' in self.input_names:
+            self.add_holidays(data)
+
 
     def add_day_of_year(self, data):
         pst_tz = pytz.timezone('US/Pacific')
@@ -63,6 +72,31 @@ class NeuralShaping():
             holiday_append.append(1 if len(holidays.loc[dt_range[0]:dt_range[1]]) > 0 else 0)
         data['holiday'] = holiday_append
 
+    def create_inputs_for_predict(self, start, input_weather):
+        weekdays=[]
+        mask = (input_weather['_date'] >= start) & (input_weather['hour'] >= 10) & (input_weather['hour'] < 20)
+        weather = input_weather[mask]
+        for timestamp in weather['_date']:
+            dt = datetime.fromtimestamp(timestamp)
+            weekdays.append(dt.weekday())
+        weather['weekday'] = weekdays
+        return weather
+
+    def load_model_and_predict(self, path, start, weather):
+        '''Load a model from a path and create predictions
+
+        path        path to the pre-trained model
+        start       datetime object of day to start
+        weather     the weather db data
+        '''
+        net = NeuralNet(input_labels=self.input_names)
+        net.load_model(path)
+        inputs = self.create_inputs_for_predict(start.timestamp(), weather)
+        self.create_inferred_data(inputs)
+        results = net.get_prediction(inputs)
+        inputs['wait_time'] = results
+        print(inputs)
+
     def run_models(self, data, node_sizes, mid_lyr_counts):
         start_shape = ()
         epoch_lim = 250
@@ -70,7 +104,8 @@ class NeuralShaping():
             for middle_layers in mid_lyr_counts:
                 #model setup
                 start_shape = (len(self.input_names),) + (node_size,)*middle_layers
-                net = NeuralNet(shape=start_shape, input_labels=self.input_names)
+                net = NeuralNet(input_labels=self.input_names)
+                net.create_model(net_shape=start_shape)
                 graphs_path = Path(__file__).parent.parent
                 graphs_dir = graphs_path.joinpath( 'AutoGraphs/{}/'.format(str(net))).resolve()
                 net.set_train_test_val(0.7, 0.2, 0.1)

@@ -76,6 +76,9 @@ class SQLiteDB():
             return datetime.fromtimestamp(timestamp, pst_tz)
         return None
 
+    def get_weather(self):
+        return pd.read_sql('''SELECT * FROM weather;''', self.conn);
+
     def get_all(self):
         return pd.read_sql('''SELECT wt.*, w.feels_like_temp, w.precip_intensity, w.precip_probability, w.weather_summary 
             FROM wait_times wt 
