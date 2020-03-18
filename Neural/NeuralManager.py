@@ -29,13 +29,17 @@ class NeuralManager():
         mid_lyr_counts  how many hidden layers there are
                         all will be of size `node_sizes`
         '''
+        self.create_inferred_data(data)
+        self.run_models(data, node_sizes, mid_lyr_counts)
+
+    def create_inferred_data(self, data):
         if 'day_of_year' in self.input_names:
             self.add_day_of_year(data)
         if 'precip_prob_thresh' in self.input_names:
             self.add_precip_prob_thresh(data)
         if 'holiday' in self.input_names:
             self.add_holidays(data)
-        self.run_models(data, node_sizes, mid_lyr_counts)
+
 
     def add_day_of_year(self, data):
         pst_tz = pytz.timezone('US/Pacific')
@@ -68,12 +72,15 @@ class NeuralManager():
             holiday_append.append(1 if len(holidays.loc[dt_range[0]:dt_range[1]]) > 0 else 0)
         data['holiday'] = holiday_append
 
-    def create_inputs_for_predict(self, start, weather):
+    def create_inputs_for_predict(self, start, input_weather):
         weekdays=[]
+        mask = (input_weather['_date'] >= start) & (input_weather['hour'] >= 10) & (input_weather['hour'] < 20)
+        weather = input_weather[mask]
         for timestamp in weather['_date']:
             dt = datetime.fromtimestamp(timestamp)
             weekdays.append(dt.weekday())
         weather['weekday'] = weekdays
+        return weather
 
     def load_model_and_predict(self, path, start, weather):
         '''Load a model from a path and create predictions
@@ -84,8 +91,11 @@ class NeuralManager():
         '''
         net = NeuralNet(input_labels=self.input_names)
         net.load_model(path)
-        weather = weather.
-
+        inputs = self.create_inputs_for_predict(start.timestamp(), weather)
+        self.create_inferred_data(inputs)
+        results = net.get_prediction(inputs)
+        inputs['wait_time'] = results
+        print(inputs)
 
     def run_models(self, data, node_sizes, mid_lyr_counts):
         start_shape = ()

@@ -38,7 +38,7 @@ class NeuralNet():
         self.distrib = (train, test, val)
 
     def load_model(self, path):
-        self.model = tf.saved_model.load(path)
+        self.model = keras.models.load_model(path)
 
     def create_model(self, net_shape):
         inputs = keras.Input(shape=net_shape[0])
@@ -102,7 +102,8 @@ class NeuralNet():
         self.avg, self.worst = self.get_stats(data_x[2], data_y[2])
 
     def get_prediction(self, data):
-        return self.model.predict(data)
+        inputs = data[self.input_labels].to_numpy()
+        return self.model.predict(inputs)
 
     def get_stats(self, data, actuals):
         predictions = self.model.predict(data)
