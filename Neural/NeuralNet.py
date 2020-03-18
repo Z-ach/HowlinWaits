@@ -21,8 +21,7 @@ Inputs:
 
 class NeuralNet():
 
-    def __init__(self, shape, input_labels):
-        self.model = self.create_model(shape)
+    def __init__(self, input_labels):
         self.input_labels = input_labels
         self.distrib = (.8, .1, .1)
         self.avg, self.worst = 0, 0
@@ -37,6 +36,9 @@ class NeuralNet():
 
     def set_train_test_val(self, train, test, val):
         self.distrib = (train, test, val)
+
+    def load_model(self, path):
+        self.model = tf.saved_model.load(path)
 
     def create_model(self, net_shape):
         inputs = keras.Input(shape=net_shape[0])
@@ -53,7 +55,7 @@ class NeuralNet():
                       loss='mse',
                       # List of metrics to monitor
                       metrics=['mae', 'mse'])
-        return model
+        self.model = model
 
     def preprocess_data(self, data):
 	#remove data if count of hour < 25
@@ -98,6 +100,9 @@ class NeuralNet():
                                  validation_data=(data_x[1], data_y[1]))
 
         self.avg, self.worst = self.get_stats(data_x[2], data_y[2])
+
+    def get_prediction(self, data):
+        return self.model.predict(data)
 
     def get_stats(self, data, actuals):
         predictions = self.model.predict(data)
