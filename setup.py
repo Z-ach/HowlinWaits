@@ -45,7 +45,7 @@ install_requires=[
     'tensorflow-estimator==2.1.0',
     'termcolor==1.1.0',
     'tweepy==3.8.0',
-    'urllib3==1.25.8',
+    'urllib3==1.26.5',
     'Werkzeug==1.0.0',
     'wrapt==1.12.0'
 ])
